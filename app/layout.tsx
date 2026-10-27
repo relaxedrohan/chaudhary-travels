@@ -3,7 +3,26 @@ import Script from "next/script";
 import { display } from "./fonts";
 import "./globals.css";
 
+// Link previews (WhatsApp, Instagram) need absolute image URLs, including the Pages base path.
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://relaxedrohan.github.io";
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(`${siteUrl}${basePath}/`),
+  openGraph: {
+    type: "website",
+    siteName: "Chaudhary Travels",
+    locale: "en_IN",
+    images: [
+      {
+        url: "og.png",
+        width: 1200,
+        height: 630,
+        type: "image/png",
+        alt: "Chaudhary Travels · Bus travel from Okhla, New Delhi",
+      },
+    ],
+  },
   title: "Chaudhary Travels · Bus travel from Okhla, New Delhi",
   description:
     "Chaudhary Travels — bus tickets from Batla House, Jamia Nagar, Okhla. Call 95999 08892 or 98102 90486 to book.",
