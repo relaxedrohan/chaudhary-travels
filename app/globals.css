@@ -1,26 +1,704 @@
 @import "tailwindcss";
 
+/* Brand tokens, taken from the letterhead. One light theme everywhere. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #ffffff;
+  --surface: #f4f4f5;
+  --fill: rgba(35, 31, 32, 0.06);
+  --fg: #231f20;
+  --muted: #736e6f;
+  --sep: rgba(35, 31, 32, 0.12);
+  --accent: #e5191f; /* letterhead red, a hair deeper so white text reaches 4.5:1 */
+  --accent-fg: #ffffff;
+  --danger: #c8102e;
+  --chrome: #ffffff;
+  --sidebar: #fafafa;
+  --scrim: rgba(35, 31, 32, 0.4);
+  color-scheme: light;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-fill: var(--fill);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-sep: var(--sep);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-display), system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+}
+
+button,
+a,
+select,
+input {
+  touch-action: manipulation;
+}
+
+@layer base {
+  /* Keyboard focus: visible, never on mouse/touch */
+  :focus-visible {
+    outline: 2px solid var(--fg);
+    outline-offset: 2px;
+  }
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  .pill-input:focus-visible {
+    outline: none; /* the pill draws its own black ring */
+  }
+  input,
+  select {
+    caret-color: var(--accent);
+  }
+}
+
+/* In the components layer so Tailwind utilities can still override them. */
+@layer components {
+  /* Feedback on press, not on release */
+  .pressable {
+    transition: transform 100ms ease-out, opacity 100ms ease-out,
+      background-color 150ms ease-out;
+  }
+  .pressable:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  .material {
+    background: var(--chrome);
+  }
+  .material-sidebar {
+    background: var(--sidebar);
+  }
+  /* Wide brand type for titles and amounts */
+  .wide {
+    font-stretch: 125%;
+  }
+
+  /* Grey pill input, as on the sign-in page */
+  .pill-input {
+    display: flex;
+    min-height: 3.5rem;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    background: var(--surface);
+    padding: 0 1.25rem;
+    color: var(--fg);
+    box-shadow: inset 0 0 0 1.5px transparent;
+  }
+  .pill-input:focus-within,
+  .pill-input[data-open] {
+    background: #fff;
+    box-shadow: inset 0 0 0 2px var(--fg);
+  }
+  .pill-input[data-invalid] {
+    box-shadow: inset 0 0 0 2px var(--danger);
+  }
+
+  @media (min-width: 768px) {
+    .pill-input {
+      min-height: 4rem;
+      padding: 0 1.5rem;
+    }
+  }
+  .pill-input[data-multiline] {
+    align-items: flex-start;
+    border-radius: 28px;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+  @media (min-width: 768px) {
+    .pill-input[data-multiline] {
+      padding-top: 1.2rem;
+      padding-bottom: 1.2rem;
+    }
+  }
+  /* Native date text sits left like the other values (iOS centres it) */
+  .pill-input input::-webkit-date-and-time-value {
+    text-align: left;
+  }
+
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: var(--fill);
+    border-radius: 6px;
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+    transform: translateX(-100%);
+    animation: shimmer 1.4s ease-in-out infinite;
+  }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .tabbar-offset {
+    bottom: calc(env(safe-area-inset-bottom) + 3.7rem);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pressable:active:not(:disabled) {
+      transform: none;
+      opacity: 0.7;
+    }
+    .skeleton::after {
+      animation: none;
+    }
+  }
+}
+
+@keyframes shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Loader: each layer drifts at its own speed for depth */
+@keyframes loader-float {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, var(--float, -8px), 0); }
+}
+@keyframes loader-bar {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}
+@layer components {
+  .loader-float {
+    animation: loader-float var(--dur, 4s) ease-in-out infinite;
+    will-change: transform;
+  }
+  .loader-bar {
+    animation: loader-bar 1.2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .loader-float { animation: none; }
+    .loader-bar { animation: none; transform: none; width: 100%; opacity: 0.5; }
+  }
+}
+
+/* ── Landing: the letterhead, as a website ──────────────────────────── */
+.landing {
+  --paper: #ffffff;
+  --ink: #231f20;
+  --red: #e5191f;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-stretch: 100%;
+  color-scheme: light;
+}
+.landing .wordmark {
+  color: var(--red);
+  font-stretch: 125%;
+  font-weight: 900;
+  text-transform: uppercase;
+  /* Sized so CHAUDHARY spans the content width exactly */
+  font-size: clamp(1.75rem, calc((100vw - 2.5rem) / 8.6), 8rem);
+  line-height: 0.84;
+  letter-spacing: -0.012em;
+}
+.landing .contact {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 4rem;
+  padding: 0.5rem 0.5rem 0.5rem 1.5rem;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+.landing .contact-number {
+  flex: 1;
+  font-size: 1.25rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+.landing .icon-btn {
+  display: inline-flex;
+  width: 3rem;
+  height: 3rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: #fff;
+  transition: transform 100ms ease-out, filter 150ms ease-out;
+}
+.landing .icon-btn:hover {
+  filter: brightness(0.92);
+}
+.landing .icon-btn:active {
+  transform: scale(0.94);
+}
+.landing .icon-call {
+  background: var(--red);
+}
+.landing .icon-whatsapp {
+  background: #25d366;
+}
+.landing .link {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.landing .link:hover {
+  color: var(--red);
+}
+.landing .footer-mark {
+  color: var(--red);
+  font-stretch: 125%;
+  font-weight: 900;
+  text-transform: uppercase;
+  font-size: clamp(2.25rem, 7vw, 3.25rem);
+  line-height: 0.86;
+  letter-spacing: -0.012em;
+}
+.landing .footer-link {
+  color: #fff;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.35);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  transition: text-decoration-color 150ms ease-out;
+}
+.landing .footer-link:hover {
+  text-decoration-color: currentColor;
+}
+.landing .section-title {
+  font-stretch: 125%;
+  font-weight: 800;
+  font-size: clamp(1.75rem, 4.2vw, 2.75rem);
+  line-height: 1;
+  letter-spacing: -0.015em;
+}
+.landing .service {
+  display: grid;
+  overflow: hidden;
+  border-radius: 24px;
+  background: #f4f4f5;
+}
+@media (min-width: 768px) {
+  .landing .service {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+  }
+  .landing .service:nth-child(even) .service-art {
+    order: 2;
+  }
+}
+.landing .service-art {
+  padding: 2.75rem 1.5rem 1.5rem;
+}
+@media (min-width: 768px) {
+  .landing .service-art {
+    padding: 2.5rem;
+  }
+}
+.landing .service-body {
+  padding: 1rem 1.5rem 1.75rem;
+}
+@media (min-width: 768px) {
+  .landing .service-body {
+    padding: 2.5rem 3rem 2.5rem 1rem;
+  }
+  .landing .service:nth-child(even) .service-body {
+    padding: 2.5rem 1rem 2.5rem 3rem;
+  }
+}
+.landing .service-title {
+  color: var(--red);
+  font-stretch: 125%;
+  font-weight: 800;
+  font-size: clamp(1.625rem, 3.4vw, 2.5rem);
+  line-height: 1.02;
+  letter-spacing: -0.015em;
+}
+.landing .tag {
+  border-radius: 999px;
+  padding: 0.3rem 0.85rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  box-shadow: inset 0 0 0 1.5px rgba(35, 31, 32, 0.35);
+}
+.landing .ask {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  border-radius: 999px;
+  padding: 0 1.1rem;
+  font-weight: 600;
+  color: #0e7d42;
+  box-shadow: inset 0 0 0 1.5px #25d366;
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+.landing .ask:hover {
+  background: #25d366;
+  color: #fff;
+}
+.landing .band-statement {
+  font-stretch: 125%;
+  font-weight: 900;
+  font-size: clamp(2rem, 6vw, 4.75rem);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+.landing .contacts-on-red .contact {
+  box-shadow: inset 0 0 0 2px #fff;
+}
+.landing .contacts-on-red .icon-call {
+  background: #fff;
+  color: var(--red);
+}
+
+/* ── Landing intro ── */
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1.25rem;
+  background: var(--red);
+  color: #fff;
+  animation: intro-lift 0.75s cubic-bezier(0.76, 0, 0.24, 1) 1.35s forwards;
+}
+.intro-inner {
+  width: fit-content;
+}
+.intro-mark {
+  font-stretch: 125%;
+  font-weight: 900;
+  text-transform: uppercase;
+  font-size: clamp(1.75rem, calc((100vw - 3rem) / 8.6), 5.5rem);
+  line-height: 0.86;
+  letter-spacing: -0.012em;
+}
+.intro-line {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.04em;
+}
+.intro-line > span {
+  display: block;
+  animation: intro-rise 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: var(--d, 0ms);
+}
+.intro-rule {
+  height: 2px;
+  margin-top: 0.9rem;
+  background: #fff;
+  transform-origin: left;
+  animation: intro-draw 0.9s cubic-bezier(0.65, 0, 0.35, 1) 0.3s both;
+}
+@keyframes intro-rise {
+  from { transform: translate3d(0, 105%, 0); }
+  to { transform: none; }
+}
+@keyframes intro-draw {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes intro-lift {
+  to { transform: translate3d(0, -100%, 0); visibility: hidden; }
+}
+.no-intro .intro {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .intro {
+    display: none;
+  }
+}
+/* Staff loader: no timed lift (Motion handles exit), rule loops while waiting */
+.intro.intro-staff {
+  animation: none;
+  font-family: var(--font-display), system-ui, sans-serif;
+}
+.intro-rule-loop {
+  animation: intro-draw 0.9s cubic-bezier(0.65, 0, 0.35, 1) 0.3s both,
+    intro-sweep 1.2s cubic-bezier(0.65, 0, 0.35, 1) 1.2s infinite;
+}
+@keyframes intro-sweep {
+  0% { transform-origin: right; transform: scaleX(1); }
+  50% { transform-origin: right; transform: scaleX(0); }
+  50.01% { transform-origin: left; transform: scaleX(0); }
+  100% { transform-origin: left; transform: scaleX(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .intro.intro-staff {
+    display: flex;
+  }
+  .intro-staff .intro-line > span,
+  .intro-rule-loop {
+    animation: none;
+  }
+}
+
+/* ── Service illustrations ── */
+.plan-body {
+  fill: #fff;
+  stroke: var(--ink);
+  stroke-width: 2.5;
+}
+.plan-line {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.plan-aisle {
+  stroke: rgba(35, 31, 32, 0.15);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 5;
+}
+.plan-seat {
+  fill: #fff;
+  stroke: rgba(35, 31, 32, 0.4);
+  stroke-width: 1.5;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.plan-label {
+  font-size: 13px;
+  font-weight: 500;
+  fill: rgba(35, 31, 32, 0.6);
+}
+.play .plan-pick,
+.play .plan-fill {
+  animation: seat-take 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) var(--delay, 0ms) both;
+}
+@keyframes seat-take {
+  0% { fill: #fff; stroke: rgba(35, 31, 32, 0.4); transform: scale(1); }
+  45% { transform: scale(1.18); }
+  100% { fill: var(--red); stroke: var(--red); transform: scale(1); }
+}
+
+.route-base {
+  fill: none;
+  stroke: rgba(35, 31, 32, 0.18);
+  stroke-width: 2;
+  stroke-dasharray: 4 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.route-draw {
+  fill: none;
+  stroke: var(--red);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.play .route-draw {
+  animation: route-draw 1.8s cubic-bezier(0.45, 0, 0.55, 1) 0.2s forwards;
+}
+@keyframes route-draw {
+  to { stroke-dashoffset: 0; }
+}
+.pin {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transform: translateY(-10px) scale(0);
+  opacity: 0;
+}
+.play .pin {
+  animation: pin-pop 0.45s cubic-bezier(0.3, 1.5, 0.5, 1) var(--delay, 0ms) forwards;
+}
+@keyframes pin-pop {
+  to { transform: none; opacity: 1; }
+}
+.pin-stop {
+  fill: #fff;
+  stroke: var(--red);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+.pin-end {
+  fill: var(--red);
+}
+.pin-dot {
+  fill: var(--red);
+}
+.pin-dot-end {
+  fill: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-pick,
+  .plan-fill {
+    fill: var(--red);
+    stroke: var(--red);
+  }
+  .play .plan-pick,
+  .play .plan-fill,
+  .play .route-draw,
+  .play .pin {
+    animation: none;
+  }
+  .route-draw {
+    stroke-dashoffset: 0;
+  }
+  .pin {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* ── Scroll-driven depth (runs off the main thread where supported) ── */
+@supports (animation-timeline: view()) {
+  .px-hero {
+    animation: px-hero linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 100vh;
+  }
+  .px-hero.px-fade {
+    animation-name: px-hero-fade;
+  }
+  .px-view {
+    animation: px-view linear both;
+    animation-timeline: view();
+  }
+  .rise {
+    animation: rise linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 85%;
+  }
+}
+@keyframes px-hero {
+  to { transform: translate3d(0, var(--px), 0); }
+}
+@keyframes px-hero-fade {
+  0% { transform: none; opacity: 1; }
+  45% { opacity: 1; }
+  100% { transform: translate3d(0, var(--px), 0); opacity: 0.15; }
+}
+@keyframes px-view {
+  from { transform: translate3d(0, var(--px), 0); }
+  to { transform: translate3d(0, calc(var(--px) * -1), 0); }
+}
+@keyframes rise {
+  from { transform: translate3d(0, 80px, 0) scale(0.95); opacity: 0.35; }
+  to { transform: none; opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .px-hero,
+  .px-view,
+  .rise {
+    animation: none;
+  }
+}
+
+/* ── Staff sign in (landing theme) ── */
+.landing .login-mark {
+  color: var(--red);
+  font-stretch: 125%;
+  font-weight: 900;
+  text-transform: uppercase;
+  /* Two stacked lines; CHAUDHARY spans the phone's width, capped on laptops */
+  font-size: clamp(2rem, calc((100vw - 2.5rem) / 8.6), 3.5rem);
+  line-height: 0.86;
+  letter-spacing: -0.012em;
+}
+.landing .login-title {
+  font-stretch: 125%;
+  font-weight: 800;
+  font-size: clamp(2.75rem, 9vw, 4rem);
+  line-height: 0.95;
+  letter-spacing: -0.025em;
+}
+.landing .login-input {
+  width: 100%;
+  height: 4rem;
+  border-radius: 999px;
+  background: #f4f4f5;
+  padding: 0 1.5rem;
+  font-size: 1.0625rem;
+  color: var(--ink);
+  outline: none;
+  box-shadow: inset 0 0 0 1.5px transparent;
+  transition: box-shadow 150ms ease-out, background-color 150ms ease-out;
+}
+.landing .login-input::placeholder {
+  color: rgba(35, 31, 32, 0.45);
+}
+.landing .login-input:focus {
+  background: #fff;
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+.landing .login-input[aria-invalid="true"] {
+  box-shadow: inset 0 0 0 2px var(--red);
+}
+.landing .login-submit {
+  display: flex;
+  width: 100%;
+  height: 4rem;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 999px;
+  padding: 0 1.75rem;
+  background: var(--red);
+  color: #fff;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  transition: transform 100ms ease-out, background-color 150ms ease-out, opacity 150ms ease-out;
+}
+.landing .login-submit:hover:not(:disabled) {
+  background: #d4141b;
+}
+.landing .login-submit:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.landing .login-submit:disabled {
+  opacity: 0.45;
+}
+.landing .login-submit svg {
+  transition: transform 200ms ease-out;
+}
+.landing .login-submit:hover:not(:disabled) svg {
+  transform: translateX(3px);
+}
+
+/* Toasts: same spring-like pop as before, in CSS */
+.toast {
+  animation: toast-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.toast-out {
+  animation: toast-out 200ms ease-in both;
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes toast-out {
+  to { opacity: 0; transform: scale(0.92); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation-name: fade-in; }
+  .toast-out { animation-name: fade-out; }
+  @keyframes fade-in { from { opacity: 0; } }
+  @keyframes fade-out { to { opacity: 0; } }
 }

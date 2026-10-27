@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Invoice generator
 
-## Getting Started
+Bus ticket invoices with GST. Next.js static site on GitHub Pages, data in Supabase.
 
-First, run the development server:
+## Setup
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. **Supabase** — create a free project, then:
+   - SQL Editor → run each file in [`supabase/migrations`](supabase/migrations), in order
+     (`001` → `004`). Choose *Run without limit* if asked. Every file is safe to re-run.
+   - Authentication → Sign In / Providers → turn off **Allow new users to sign up**.
+   - Authentication → Users → **Add user** for each person (email + password, tick *Auto confirm*).
+2. **Local** — copy `.env.example` to `.env.local`, fill in the project URL and publishable key
+   (Project Settings → API), then `npm install && npm run dev`.
+3. **GitHub Pages** — in the repo: Settings → Pages → Source: **GitHub Actions**.
+   Settings → Secrets → Actions: add `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`.
+   Push to `main` to deploy.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Export for the CA
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Invoices → pick a date range → **Export CSV**. The file has the GST split for every invoice
+in that range.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Invoice history
 
-## Learn More
+Every edit and delete keeps the previous version in the `invoice_history` table
+(Table Editor, dashboard only), with who changed it and when.
 
-To learn more about Next.js, take a look at the following resources:
+## Notes
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Invoice numbers are `DDMMYYYY-NNN` (IST), restarting at 001 each day.
+- GST is worked back from the ticket price using the rate in Settings at the time of saving.
+- Edits keep the invoice number, date and original GST rate; a new price re-splits the GST.
+- Only signed-in staff can read or change data; anonymous sessions are refused by the database.
