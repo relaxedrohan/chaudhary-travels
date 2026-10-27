@@ -24,8 +24,7 @@ export const metadata: Metadata = {
     ],
   },
   title: "Chaudhary Travels · Bus travel across India",
-  description:
-    "Chaudhary Travels — bus tickets from Batla House, Jamia Nagar, Okhla. Call 95999 08892 or 98102 90486 to book.",
+  description: "Call 95999 08892 or 98102 90486 to book.",
 };
 
 export const viewport: Viewport = {
