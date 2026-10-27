@@ -19,11 +19,11 @@ export const metadata: Metadata = {
         width: 1200,
         height: 630,
         type: "image/png",
-        alt: "Chaudhary Travels · Bus travel from Okhla, New Delhi",
+        alt: "Chaudhary Travels · Bus travel across India",
       },
     ],
   },
-  title: "Chaudhary Travels · Bus travel from Okhla, New Delhi",
+  title: "Chaudhary Travels · Bus travel across India",
   description:
     "Chaudhary Travels — bus tickets from Batla House, Jamia Nagar, Okhla. Call 95999 08892 or 98102 90486 to book.",
 };
