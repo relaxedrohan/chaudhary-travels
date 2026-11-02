@@ -134,6 +134,8 @@ export function DestinationBoard({ text, label }: { text: string; label: string 
     };
 
     const draw = () => {
+      // A hidden or collapsed board has zero width; drawing a 0×0 canvas throws.
+      if (!canvas.width || !canvas.height) return;
       ctx.drawImage(unlit, 0, 0);
       const p = pitch * dpr;
       const cols = Math.min(visible, poweredCols);

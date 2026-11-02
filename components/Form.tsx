@@ -116,38 +116,50 @@ type SelectProps = {
 };
 
 /**
- * Brand dropdown. The browser's native menu can't be styled, so it flashed a
- * system-looking list before our styles; this one is ours from the first frame.
+ * Brand dropdown you can type into. Opens with every option; typing narrows it
+ * to the matches. The browser's native menu can't be styled or searched.
  */
 export function Select({ label, placeholder, options, value, onValueChange }: SelectProps) {
   const id = useId();
   const root = useRef<HTMLDivElement>(null);
+  const input = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLUListElement>(null);
   const [open, setOpen] = useState(false);
   const [up, setUp] = useState(false);
   const [active, setActive] = useState(0);
+  const [query, setQuery] = useState("");
 
-  // "None" first, then the real options.
-  const all = [{ value: "", label: placeholder }, ...options];
-  const current = all.find((o) => o.value === value) ?? all[0];
+  const current = options.find((o) => o.value === value);
+  // Every typed word must appear somewhere, so "dl 12" or "delhi jaipur" both match.
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const shown = terms.length
+    ? options.filter((o) => terms.every((t) => o.label.toLowerCase().includes(t)))
+    : [{ value: "", label: placeholder }, ...options]; // "None" first, then the real options.
 
   function openMenu() {
+    if (open) return;
     const r = root.current?.getBoundingClientRect();
     // Flip upward when the menu wouldn't fit above the tab bar / save bar.
     setUp(Boolean(r && window.innerHeight - r.bottom < 300 && r.top > 300));
-    setActive(Math.max(0, all.findIndex((o) => o.value === value)));
+    setActive(current ? options.indexOf(current) + 1 : 0);
     setOpen(true);
+  }
+
+  function close() {
+    setOpen(false);
+    setQuery("");
   }
 
   function choose(v: string) {
     onValueChange(v);
-    setOpen(false);
+    close();
+    input.current?.blur();
   }
 
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
-      if (!root.current?.contains(e.target as Node)) setOpen(false);
+      if (!root.current?.contains(e.target as Node)) close();
     };
     document.addEventListener("pointerdown", onDown);
     return () => document.removeEventListener("pointerdown", onDown);
@@ -159,47 +171,67 @@ export function Select({ label, placeholder, options, value, onValueChange }: Se
 
   function onKeyDown(e: React.KeyboardEvent) {
     if (!open) {
-      if (["ArrowDown", "ArrowUp", "Enter", " "].includes(e.key)) {
+      if (["ArrowDown", "ArrowUp", "Enter"].includes(e.key)) {
         e.preventDefault();
         openMenu();
       }
       return;
     }
-    if (e.key === "Tab") return setOpen(false);
-    // Handle Escape here so it closes only the menu, not the sheet around it.
-    e.preventDefault();
+    if (e.key === "Tab") return close();
     if (e.key === "Escape") {
+      // Close only the menu, not the sheet around it.
+      e.preventDefault();
       e.stopPropagation();
-      return setOpen(false);
+      return close();
     }
-    if (e.key === "ArrowDown") setActive((i) => Math.min(all.length - 1, i + 1));
-    if (e.key === "ArrowUp") setActive((i) => Math.max(0, i - 1));
-    if (e.key === "Home") setActive(0);
-    if (e.key === "End") setActive(all.length - 1);
-    if (e.key === "Enter" || e.key === " ") choose(all[active].value);
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActive((i) => Math.min(shown.length - 1, i + 1));
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive((i) => Math.max(0, i - 1));
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (shown[active]) choose(shown[active].value);
+    }
   }
 
   return (
     <div ref={root} className="relative">
-      <span id={`${id}-label`} className={labelClass}>
+      <label htmlFor={id} id={`${id}-label`} className={labelClass}>
         {label}
-      </span>
+      </label>
       <div className="relative">
-      <button
-        type="button"
-        id={id}
-        role="combobox"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-labelledby={`${id}-label`}
-        aria-controls={open ? `${id}-list` : undefined}
-        aria-activedescendant={open ? `${id}-opt-${active}` : undefined}
-        onClick={() => (open ? setOpen(false) : openMenu())}
-        onKeyDown={onKeyDown}
-        className="pill-input w-full cursor-pointer justify-between text-left"
+      <div
+        className="pill-input w-full cursor-text justify-between"
         data-open={open ? "" : undefined}
+        onClick={() => {
+          input.current?.focus();
+          openMenu();
+        }}
       >
-        <span className={`truncate text-[1.0625rem] ${value ? "" : "text-muted"}`}>{current.label}</span>
+        <input
+          ref={input}
+          id={id}
+          role="combobox"
+          autoComplete="off"
+          spellCheck={false}
+          aria-autocomplete="list"
+          aria-expanded={open}
+          aria-controls={open ? `${id}-list` : undefined}
+          aria-activedescendant={open && shown[active] ? `${id}-opt-${active}` : undefined}
+          value={open ? query : (current?.label ?? "")}
+          placeholder={open ? (current?.label ?? "Type to search") : placeholder}
+          onChange={(e) => {
+            openMenu();
+            setQuery(e.target.value);
+            setActive(0);
+          }}
+          onKeyDown={onKeyDown}
+          className="min-w-0 flex-1 truncate bg-transparent text-[1.0625rem] outline-none placeholder:text-muted"
+        />
         <svg
           width="16"
           height="16"
@@ -214,7 +246,7 @@ export function Select({ label, placeholder, options, value, onValueChange }: Se
         >
           <path d="M6 9l6 6 6-6" />
         </svg>
-      </button>
+      </div>
       {open && (
         <ul
           ref={list}
@@ -225,7 +257,10 @@ export function Select({ label, placeholder, options, value, onValueChange }: Se
             up ? "bottom-full mb-2" : "top-full mt-2"
           }`}
         >
-          {all.map((o, i) => {
+          {shown.length === 0 && (
+            <li className="flex min-h-12 items-center px-4 text-[1rem] text-muted">No matches</li>
+          )}
+          {shown.map((o, i) => {
             const selected = o.value === value;
             return (
               <li
@@ -234,7 +269,10 @@ export function Select({ label, placeholder, options, value, onValueChange }: Se
                 role="option"
                 aria-selected={selected}
                 onPointerEnter={() => setActive(i)}
-                onClick={() => choose(o.value)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  choose(o.value);
+                }}
                 className={`flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-full px-4 text-[1rem] ${
                   i === active ? "bg-surface" : ""
                 } ${o.value ? "" : "text-muted"} ${selected ? "font-semibold" : ""}`}
